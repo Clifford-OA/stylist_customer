@@ -23,20 +23,20 @@ class StylistCard extends StatelessWidget {
       child: Stack(
         children: <Widget>[
           Positioned(
-            top: 20,
+            top: 2,
             right: -60,
             child: stylist['imgUrl'].contains('http') ? FadeInImage.assetNetwork(
               width: MediaQuery.of(context).size.width * 0.60,
-                placeholder: 'assets/images/stylist1.png',
+                placeholder: 'assets/images/no_picture.png',
                 image: stylist['imgUrl'],
                 imageErrorBuilder: (context, error, stackTrace) {
                   return Image.asset(
-                    'assets/images/stylist1.png',width: MediaQuery.of(context).size.width * 0.60,
+                    'assets/images/no_picture.png',width: MediaQuery.of(context).size.width * 0.60,
                   );
                 },
                 fit: BoxFit.cover,
               ) : Image.asset(
-               'assets/images/stylist1.png',
+               'assets/images/no_picture.png',
               width: MediaQuery.of(context).size.width * 0.60,
              ),
             // child: Image.asset(
@@ -45,7 +45,7 @@ class StylistCard extends StatelessWidget {
             // ),
           ),
           Padding(
-            padding: EdgeInsets.only(top: 40, left: 30),
+            padding: EdgeInsets.only(top: 40, left: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -91,6 +91,7 @@ class StylistCard extends StatelessWidget {
                 ),
                 MaterialButton(
                   onPressed: () {
+                    print(stylist['tid']);
                     Navigator.push(
                         context,
                         MaterialPageRoute(

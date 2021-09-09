@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stylist_customer/auth/auth.dart';
 import 'package:stylist_customer/auth/stylist.dart';
 import 'package:stylist_customer/auth/userData.dart';
@@ -17,18 +21,23 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  CollectionReference bookList = FirebaseFirestore.instance.collection('booklist');
-  CollectionReference bookTimeList = FirebaseFirestore.instance.collection('bookdate');
-
+  CollectionReference bookList =
+      FirebaseFirestore.instance.collection('booklist');
+  CollectionReference bookTimeList =
+      FirebaseFirestore.instance.collection('bookdate');
+  final ImagePicker _picker = ImagePicker();
+  late final collectData;
   late DateTime bookDate;
-  String time = '';
-  String stylistId = '';
+  String time = 'select one';
   String stylistName = '';
-  String tel = '';
-  String hostelName = '';
+  // String hostelName = '';
   String cusName = '';
+  bool _loadImage = false;
+  bool _check = false;
+  String imgUrl = '';
 
-   List<String> _workingTime = [
+  List<String> _workingTime = [
+    'select one',
     '6:00',
     '8:00',
     '10:00',
@@ -49,27 +58,67 @@ class _BookingScreenState extends State<BookingScreen> {
     return '$time';
   }
 
+  Future _loadStylistAvailableTimeSlot() async {
+    final stylistClass = Provider.of<Stylist>(context, listen: false);
+    final stylistId = stylistClass.tid;
+    print('stylist id before ' + stylistId);
+    print('tid here @ ');
+    print(stylistClass.stylistRef);
+    await bookTimeList.doc(stylistId).get().then((query) {
+      Map<String, dynamic> data = query.data() as Map<String, dynamic>;
+      List<dynamic> booktime = data[toDate(bookDate)];
+      print(booktime);
+      if (booktime.isNotEmpty) {
+        booktime.forEach((timeTaken) {
+          if (_workingTime.contains(timeTaken)) {
+            setState(() {
+              _workingTime.remove(timeTaken);
+            });
+          } else
+            return;
+        });
+      } else
+        return;
+    });
+  }
 
-Future _loadStylistAvailableTimeSlot() async {
-  final stylistClass = Provider.of<Stylist>(context, listen: false);
-  stylistId = stylistClass.tid;
-  await bookTimeList.doc(stylistId).get().then((query) {
-    Map<String, dynamic> data = query.data() as Map<String, dynamic>;
-     List<String> booktime = data[toDate(bookDate)];
-    booktime.forEach((timeTaken) { 
-      if(_workingTime.contains(timeTaken)){
-          _workingTime.remove(timeTaken);
-      }else return;
-     });
-  });
-}
+  void _validateAndBook() {
+    final errorResult = _validate();
+    if (errorResult['status']) {
+      addToBookedList();
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorResult['message'])));
+    }
+  }
 
+  _validate() {
+    Map errorHandler = {'status': false, 'message': ''};
+    // if (hostelName.isEmpty || hostelName.length < 5) {
+    //   errorHandler['message'] =
+    //       'Hostel should not be empty or less than 5 characters';
+    //   return errorHandler;
+    // } else
+     if (time == 'select one') {
+      errorHandler['message'] = 'Please select time';
+      return errorHandler;
+    } else {
+      errorHandler['status'] = true;
+      return errorHandler;
+    }
+  }
 
   @override
   void initState() {
+    final stylistClass = Provider.of<Stylist>(context, listen:  false);
+    collectData = stylistClass.stylistRef;
     super.initState();
     bookDate = DateTime.now();
-  _loadStylistAvailableTimeSlot();
+    _loadData();
+  }
+
+  void _loadData() async {
+    await _loadStylistAvailableTimeSlot();
   }
 
   Future<void> addToBookedList() async {
@@ -77,12 +126,15 @@ Future _loadStylistAvailableTimeSlot() async {
     final stylist = Provider.of<Stylist>(context, listen: false);
     final userData = Provider.of<UserData>(context, listen: false);
     final userId = authClass.auth.currentUser!.uid;
+    final stylistId = stylist.tid;
+    print('About to go down');
+    print(stylistId);
     cusName = userData.userName;
-    stylistId = stylist.tid;
     stylistName = stylist.stylistName;
     List bookItem = [];
-    bookItem.add(toMap());
+    bookItem.add(toMap(userData.tel));
     List<String> ids = [];
+    print(bookItem);
     await FirebaseFirestore.instance
         .collection('booklist')
         .get()
@@ -92,54 +144,51 @@ Future _loadStylistAvailableTimeSlot() async {
       });
     });
     if (ids.contains(userId)) {
-      await bookList
-          .doc(userId)
-          .update({'bookedList': FieldValue.arrayUnion(bookItem)})
-          .then((value){
-            _addToBookDateList();
-          Navigator.pushNamed(context, 'BookList');
-          } 
-          ) 
-          .catchError((error) {
-            print("Failed to book: $error");
-          });
+      await bookList.doc(userId).update(
+          {'bookedList': FieldValue.arrayUnion(bookItem)}).then((value) {
+        _addToBookDateList();
+        Navigator.pushNamed(context, 'BookList');
+      }).catchError((error) {
+        print("Failed to book: $error");
+      });
     } else {
       await bookList
           .doc(userId)
-          .set({'bookedList': FieldValue.arrayUnion(bookItem)})
-          .then((value){
-            _addToBookDateList();
-          Navigator.pushNamed(context, 'BookList');
-          } 
-          )
-          .catchError((error) {
-            print("Failed to book: $error");
-          });
+          .set({'bookedList': FieldValue.arrayUnion(bookItem)}).then((value) {
+        _addToBookDateList();
+        Navigator.pushNamed(context, 'BookList');
+      }).catchError((error) {
+        print("Failed to book: $error");
+      });
     }
   }
 
-  Map<String, dynamic> toMap() {
-  final serviceIns = Provider.of<Service>(context, listen: false);
+  Map<String, dynamic> toMap(String userTel) {
+    final serviceIns = Provider.of<Service>(context, listen: false);
+    final stylistClass = Provider.of<Stylist>(context, listen: false);
+    final stylistId = stylistClass.tid;
+    final ano = collectData['tid'];
+    print('coll tid ' + ano);
     return {
       'cusName': cusName,
       'price': serviceIns.serviceRef['price'],
       'title': serviceIns.serviceRef['title'],
-      'hostelName': hostelName,
       'tid': stylistId,
       'stylistName': stylistName,
-      'tel': tel,
-      'time': toTime(bookDate),
+      'tel': userTel,
+      'imgUrl': imgUrl,
+      'time': time,
       'date': toDate(bookDate),
       'status': 'pending'
     };
   }
 
-void _addToBookDateList() async {
-  final stylistClass = Provider.of<Stylist>(context,listen: false);
-  stylistId = stylistClass.tid;
-  List<String> bookTime = [];
-  bookTime.add(time);
-  List<String> ids = [];
+  void _addToBookDateList() async {
+    final stylistClass = Provider.of<Stylist>(context, listen: false);
+    final stylistIdIn = stylistClass.tid;
+    List<String> bookTime = [];
+    bookTime.add(time);
+    List<String> ids = [];
     await FirebaseFirestore.instance
         .collection('bookdate')
         .get()
@@ -148,17 +197,16 @@ void _addToBookDateList() async {
         ids.add(doc.id);
       });
     });
-     if (ids.contains(stylistId)) {
-      await bookTimeList.doc(stylistId).update({
-      '${toDate(bookDate)}' : FieldValue.arrayUnion(bookTime)
-     });
-
-     }else {
-       await bookTimeList.doc(stylistId).set({
-         '${toDate(bookDate)}' : FieldValue.arrayUnion(bookTime)
-       });
-     }
-}
+    if (ids.contains(stylistIdIn)) {
+      await bookTimeList
+          .doc(stylistIdIn)
+          .update({'${toDate(bookDate)}': FieldValue.arrayUnion(bookTime)});
+    } else {
+      await bookTimeList
+          .doc(stylistIdIn)
+          .set({'${toDate(bookDate)}': FieldValue.arrayUnion(bookTime)});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,8 +241,8 @@ void _addToBookDateList() async {
                 height: 20,
               ),
               Container(
-                height: MediaQuery.of(context).size.height,
-                width: MediaQuery.of(context).size.width,
+                // height: MediaQuery.of(context).size.height,
+                // width: MediaQuery.of(context).size.width,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(
@@ -209,16 +257,84 @@ void _addToBookDateList() async {
                       SizedBox(
                         height: 50,
                       ),
-                      Text(
-                        'Booking Date and Time',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 24,
+                      Center(
+                        child: Text(
+                          'Booking Date and Time',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
                         ),
                       ),
                       SizedBox(
                         height: 50,
                       ),
+                      Text(
+                          'Check the below box to upload your own service style image',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.brown,
+                            fontSize: 18,
+                          )),
+                      Padding(
+                        padding: EdgeInsets.all(5),
+                        child: Checkbox(
+                            activeColor: Colors.green,
+                            value: _check,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _check = value!;
+                              });
+                            }),
+                      ),
+                      _check == true
+                          ? Center(
+                              child: Container(
+
+                                padding: EdgeInsets.all(5.0),
+                                width: MediaQuery.of(context).size.width / 2,
+                                height: MediaQuery.of(context).size.width / 2,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(100.0),
+                                  child: _loadImage == false
+                                      ? FadeInImage.assetNetwork(
+                                          placeholder:
+                                              'assets/images/no_picture.png',
+                                          image: imgUrl,
+                                          imageErrorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Image.asset(
+                                              'assets/images/no_picture.png',
+                                            );
+                                          },
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                ),
+                              ),
+                            )
+                          : SizedBox(height: 0),
+                      _check == true
+                          ? Padding(
+                              padding:
+                                  EdgeInsets.only(bottom: 2, left: 185, top: 0),
+                              child: CircleAvatar(
+                                backgroundColor: Colors.black54,
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.edit,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: _getServiceImage,
+                                ),
+                              ),
+                            )
+                          : SizedBox(height: 0),
+
+                      SizedBox(height: 5.0),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -228,20 +344,21 @@ void _addToBookDateList() async {
                               'Date',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
+                                color: Colors.orange,
                                 fontSize: 24,
                               ),
                             ),
                           ),
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              'Time',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24,
-                              ),
-                            ),
-                          )
+                          // Expanded(
+                          //   flex: 1,
+                          //   child: Text(
+                          //     'Time',
+                          //     style: TextStyle(
+                          //       fontWeight: FontWeight.bold,
+                          //       fontSize: 24,
+                          //     ),
+                          //   ),
+                          // )
                         ],
                       ),
                       Row(
@@ -252,61 +369,86 @@ void _addToBookDateList() async {
                                 text: toDate(bookDate),
                                 onClicked: () => pickBookDate(pickDate: true)),
                           ),
-                          Expanded(child: DropdownButton(
-                              value: time,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  time = newValue!;
-                                });
-                              },
-                              items: _workingTime.map((workingDay) {
-                                return DropdownMenuItem(
-                                  value: workingDay,
-                                  child: Text(workingDay),
-                                );
-                              }).toList(),
-                              hint: Text('Choose working days'),
-                              dropdownColor: Colors.white,
-                              icon: Icon(Icons.arrow_drop_down),
-                              iconSize: 36,
-                              isExpanded: true,
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 22,
-                              ),
-                            ),)
-
-                         // TODO  return some message to the customer if there's not available time
                         ],
                       ),
-                      SizedBox(height: 30),
-                      TextInputField(
-                        icon: Icons.phone,
-                        hint: 'Tel..',
-                        inputType: TextInputType.number,
-                        inputAction: TextInputAction.next,
-                        onChanged: (value) {
-                          setState(() {
-                            tel = value;
-                          });
-                        },
+                      Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Text(
+                          'Available time',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            fontSize: 24,
+                          ),
+                        ),
                       ),
+                      _workingTime.length > 1
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButton(
+                                    value: time,
+                                    items:
+                                        _workingTime.map((String workingDay) {
+                                      return DropdownMenuItem(
+                                        value: workingDay,
+                                        child: Text(workingDay),
+                                      );
+                                    }).toList(),
+                                    hint: Text('Choose working time'),
+                                    dropdownColor: Colors.white,
+                                    icon: Icon(Icons.arrow_drop_down),
+                                    iconSize: 25,
+                                    isExpanded: true,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 22,
+                                    ),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        time = newValue!;
+                                      });
+                                    },
+                                  ),
+                                )
+                              ],
+                            )
+                          : Center(
+                              child: Text(
+                                'Sorry!! All the available Time slots for this particular stylist on this day have been taken.',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 22,
+                                ),
+                              ),
+                            ),
+                      SizedBox(height: 50),
+                      // TextInputField(
+                      //   icon: Icons.phone,
+                      //   hint: 'Tel..',
+                      //   inputType: TextInputType.number,
+                      //   inputAction: TextInputAction.next,
+                      //   onChanged: (value) {
+                      //     setState(() {
+                      //       tel = value;
+                      //     });
+                      //   },
+                      // ),
+                      // TextInputField(
+                      //   icon: Icons.home,
+                      //   hint: 'hostel name',
+                      //   inputType: TextInputType.text,
+                      //   inputAction: TextInputAction.next,
+                      //   onChanged: (value) {
+                      //     setState(() {
+                      //       hostelName = value;
+                      //     });
+                      //   },
+                      // ),
 
-                      TextInputField(
-                        icon: Icons.home,
-                        hint: 'hostel name',
-                        inputType: TextInputType.text,
-                        inputAction: TextInputAction.next,
-                        onChanged: (value) {
-                          setState(() {
-                            hostelName = value;
-                          });
-                        },
-                      ),
-                     
                       RoundedButton(
                         buttonName: 'Book',
-                        action: addToBookedList,
+                        action: _validateAndBook,
                       ),
                     ],
                   ),
@@ -336,14 +478,14 @@ void _addToBookDateList() async {
       firstDate: pickDate ? bookDate : null,
     );
     if (date == null) return;
-    setState(() async {
+    setState(() {
       bookDate = date;
-     await _loadStylistAvailableTimeSlot();
     });
+    // load available time for this particular sytlist when bookDate changes
+    await _loadStylistAvailableTimeSlot();
   }
 
   // method showing calendar to be picking the date and time from by using the switches
-
   Future<DateTime?> pickDateTime(
     DateTime initialDate, {
     required bool pickDate,
@@ -360,9 +502,8 @@ void _addToBookDateList() async {
 
       final time =
           Duration(hours: initialDate.hour, minutes: initialDate.minute);
-          // _loadStylistAvailableTimeSlot();
+      print(date);
       return date.add(time);
-
     } else {
       final timeOfDay = await showTimePicker(
         context: context,
@@ -373,8 +514,25 @@ void _addToBookDateList() async {
       final date =
           DateTime(initialDate.year, initialDate.month, initialDate.day);
       final time = Duration(hours: timeOfDay.hour, minutes: timeOfDay.minute);
-      // _loadStylistAvailableTimeSlot();
       return date.add(time);
     }
+  }
+
+  Future _getServiceImage() async {
+    late File image;
+    // String tid = userData.userRef['uid'];
+    final img = await _picker.pickImage(source: ImageSource.gallery);
+    _loadImage = true;
+    File file = File(img!.path);
+    setState(() {
+      image = file;
+    });
+    var storeImage = FirebaseStorage.instance.ref().child(image.path);
+    var task = await storeImage.putFile(image);
+    var serviceImgUrl = await storeImage.getDownloadURL();
+    setState(() {
+      imgUrl = serviceImgUrl;
+      _loadImage = false;
+    });
   }
 }

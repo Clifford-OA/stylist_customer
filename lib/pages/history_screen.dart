@@ -5,27 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // ignore: must_be_immutable
-class BookList extends StatelessWidget {
+class History extends StatelessWidget {
   // Display booked list for you
-  Future<Widget> _displayBook(BuildContext context) async {
+  Future<Widget> _displayHistory(BuildContext context) async {
     final authClass = Provider.of<AuthClass>(context, listen: false);
     String userId = authClass.auth.currentUser!.uid;
     List<Widget> list = [
       SizedBox(height: 0.0),
     ];
     await FirebaseFirestore.instance
-        .collection('booklist')
+        .collection('history')
         .get()
         .then((QuerySnapshot querySnapshot) {
       querySnapshot.docs.forEach((doc) {
         if (doc.id == userId) {
-          List<dynamic> data = doc['bookedList'];
-          data
-            ..sort(
-                (a, b) => b['date'].compareTo(a['date']));
-          data..sort((a, b) => b['time'].compareTo(a['time']));
+          List<dynamic> data = doc['historyList'];
+          print(data);
           for (var i = 0; i < data.length; i++) {
-            list.add(BookedTile(data[i]));
+            // if(data[i]['status'] == 'done') {
+              list.add(HistoryTile(data[i]));
+            // }
           }
         }
       });
@@ -36,9 +35,10 @@ class BookList extends StatelessWidget {
             children: list,
           )
         : Center(
-            child: Text('Your book list is empty'),
+            child: Text('Your history list is empty'),
           );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class BookList extends StatelessWidget {
       backgroundColor: Colors.blue,
       body: SingleChildScrollView(
         child: SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.max,
+          child: Column(
             children: <Widget>[
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -58,15 +58,7 @@ class BookList extends StatelessWidget {
                           Icons.arrow_back_ios,
                           color: Colors.white,
                         ),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, 'HomeScreen')),
-                            IconButton(
-                        icon: Icon(
-                          Icons.history,
-                          color: Colors.white,
-                        ),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, 'History')),
+                        onPressed: () => Navigator.pop(context)),
                   ],
                 ),
               ),
@@ -74,8 +66,8 @@ class BookList extends StatelessWidget {
                 height: 20,
               ),
               Container(
-                // height: MediaQuery.of(context).size.height,
-                // width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                width: MediaQuery.of(context).size.width,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(
@@ -83,7 +75,7 @@ class BookList extends StatelessWidget {
                   ),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 30),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
@@ -91,7 +83,7 @@ class BookList extends StatelessWidget {
                         height: 50,
                       ),
                       Text(
-                        'Booked List and Its Status',
+                        'Service Done and Ratings',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
@@ -101,7 +93,7 @@ class BookList extends StatelessWidget {
                         height: 50,
                       ),
                       FutureBuilder<Widget>(
-                          future: _displayBook(context),
+                          future: _displayHistory(context),
                           builder: (BuildContext context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.done) {
@@ -125,22 +117,20 @@ class BookList extends StatelessWidget {
   }
 }
 
-class BookedTile extends StatelessWidget {
+class HistoryTile extends StatelessWidget {
   final service;
-  BookedTile(this.service);
+  HistoryTile(this.service);
 
   @override
   Widget build(BuildContext context) {
     final serviceRef = Provider.of<Service>(context, listen: false);
     Map<String, dynamic> serviceInfo = serviceRef.serviceRef;
-
     return Container(
-      height: 70,
       margin: EdgeInsets.only(bottom: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          service['imgUrl'].contains('http')
+            service['imgUrl'].contains('http')
               ? CircleAvatar(
                   radius: 30,
                   child: Image.network(service['imgUrl']),
@@ -179,13 +169,13 @@ class BookedTile extends StatelessWidget {
                   color: Colors.grey,
                 ),
               ),
-              Text(
-                'time: ' + service['time'],
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              )
+              // Text(
+              //   'time: ' + service['time'],
+              //   style: TextStyle(
+              //     fontWeight: FontWeight.bold,
+              //     color: Colors.grey,
+              //   ),
+              // )
             ],
           ),
           // Text(
@@ -197,14 +187,13 @@ class BookedTile extends StatelessWidget {
           // ),
           MaterialButton(
             onPressed: () {},
-            color: service['status'] == 'pending'
-                ? Color(0xffFF8573)
-                : Colors.blue,
+            color: Colors.cyan,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              service['status'],
+              // service['status'],
+              'review',
               style: TextStyle(color: Colors.white),
             ),
           ),

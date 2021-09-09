@@ -9,6 +9,7 @@ class TextInputField extends StatefulWidget {
     required this.inputType,
     required this.inputAction,
     required this.onChanged,
+    this.formatters
   });
 
   final IconData icon;
@@ -16,6 +17,7 @@ class TextInputField extends StatefulWidget {
   final TextInputType inputType;
   final TextInputAction inputAction;
   final Function(String) onChanged;
+  final formatters;
 
   @override
   State<TextInputField> createState() => _TextInputFieldState();
@@ -45,11 +47,14 @@ class _TextInputFieldState extends State<TextInputField> {
         ),
         child: Center(
           child: TextField(
-            inputFormatters: [
-               widget.inputType == TextInputType.text 
-               ? FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')) 
-               :  FilteringTextInputFormatter.digitsOnly,
-            ],
+            inputFormatters: widget.formatters,
+            //  [
+            //    widget.inputType == TextInputType.number
+            //    ? FilteringTextInputFormatter.digitsOnly 
+            //    : widget.inputType == TextInputType.emailAddress 
+            //    ? FilteringTextInputFormatter.allow(RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")) 
+            //    : FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]'))
+            // ],
             onChanged: widget.onChanged,
             controller: _email,
             decoration: InputDecoration(

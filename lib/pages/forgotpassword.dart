@@ -22,7 +22,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     Size size = MediaQuery.of(context).size;
     return isLoading == false ? Stack(
       children: [
-        backgroundImage('assets/images/login_bg.png'),
+        backgroundImage('assets/images/4.jpg'),
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(

@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ? Stack(
             children: [
               backgroundImage(
-                'assets/images/detail_bg.png',
+                'assets/images/4.jpg',
               ),
               Scaffold(
                 backgroundColor: Colors.transparent,
@@ -145,13 +145,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _loadUserData()async {
-      CollectionReference stylist = FirebaseFirestore.instance.collection('stylists');
+      CollectionReference users = FirebaseFirestore.instance.collection('users');
       final authClass = Provider.of<AuthClass>(context, listen: false);
       final userData = Provider.of<UserData>(context, listen: false);
       String uid = authClass.auth.currentUser!.uid;
-      await stylist.doc(uid).get().then((query){
+      await users.doc(uid).get().then((query){
         Map<String, dynamic> data = query.data() as Map<String, dynamic>;
-        userData.userName = data['name'];
+       userData.userRef = data;
       });
 
   }

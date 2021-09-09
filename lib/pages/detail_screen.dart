@@ -11,7 +11,6 @@ class DetailScreen extends StatelessWidget {
   Widget _serviceList(BuildContext context) {
     final stylistClass = Provider.of<Stylist>(context, listen: false);
     stylistClass.stylistRef = stylist;
-
     List<dynamic> data = stylist['serviceList'];
     List<Widget> list = [];
 
@@ -40,16 +39,18 @@ class DetailScreen extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    FadeInImage.assetNetwork(
-                placeholder: 'assets/images/stylist1.png',
+                  stylist['imgUrl'].contains('http') ?  FadeInImage.assetNetwork(
+                placeholder: 'assets/images/no_picture.png',
                 image: stylist['imgUrl'],
                 imageErrorBuilder: (context, error, stackTrace) {
                   return Image.asset(
-                    'assets/images/stylist1.png',width: MediaQuery.of(context).size.width * 0.60,
+                    'assets/images/no_picture.png',width: MediaQuery.of(context).size.width * 0.60,
                   );
                 },
                 fit: BoxFit.cover,
-               ),
+               ) : Image.asset(
+                    'assets/images/no_picture.png',width: MediaQuery.of(context).size.width * 0.60,
+                  ),
                     // Image.asset(
                     //   stylist['imgUrl'].toString(),
                     //   fit: BoxFit.contain,
@@ -246,7 +247,7 @@ class ServiceTile extends StatelessWidget {
             ],
           ),
           Text(
-            '\$${service['price']}',
+            '\Ghc${service['price']}',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -254,6 +255,7 @@ class ServiceTile extends StatelessWidget {
           ),
           MaterialButton(
             onPressed: () {
+      
               final serviceIns = Provider.of<Service>(context, listen: false);
               serviceIns.serviceRef = service;
               Navigator.pushNamed(context, 'BookingScreen');

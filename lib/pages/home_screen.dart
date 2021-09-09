@@ -1,6 +1,8 @@
 // @dart=2.9
 
+import 'package:provider/provider.dart';
 import 'package:stylist_customer/auth/auth.dart';
+import 'package:stylist_customer/auth/userData.dart';
 import 'package:stylist_customer/widgets/stylistCard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -197,6 +199,9 @@ class Drawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userData = Provider.of<UserData>(context, listen: false);
+    String imgUrl = userData.imageUrl;
+    String name = userData.name;
     return Padding(
       padding: EdgeInsets.only(right: 5),
       child: Container(
@@ -212,15 +217,30 @@ class Drawer extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    'assets/images/stylist1.png',
-                    width: 100,
-                    height: 100,
+                  ClipOval(
+                    child: FadeInImage.assetNetwork(
+                      placeholder: 'assets/images/no_picture.png',
+                      image: imgUrl,
+                      imageErrorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/no_picture.png',
+                        );
+                      },
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   SizedBox(
                     height: 10,
                   ),
-                  Text('Theo')
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  )
                 ],
               ),
             ),
@@ -248,11 +268,11 @@ class Drawer extends StatelessWidget {
               height: 1,
               color: Colors.grey,
             ),
-            ListTile(
-              onTap: () {},
-              leading: Icon(Icons.settings),
-              title: Text("Settings"),
-            ),
+            // ListTile(
+            //   onTap: () {},
+            //   leading: Icon(Icons.history),
+            //   title: Text("History"),
+            // ),
             Divider(
               height: 1,
               color: Colors.grey,
@@ -263,7 +283,7 @@ class Drawer extends StatelessWidget {
                 Navigator.pushNamed(context, '/');
               },
               leading: Icon(Icons.settings),
-              title: Text("LogOut"),
+              title: Text("LogOut", style: TextStyle(color: Colors.red),),
             ),
           ],
         ),

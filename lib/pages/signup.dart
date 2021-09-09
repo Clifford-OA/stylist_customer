@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:stylist_customer/auth/auth.dart';
 import 'package:stylist_customer/auth/userData.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +24,7 @@ class _SignUpState extends State<SignUp> {
   String name = '';
   String password = '';
   String passwordConf = '';
+  String tel = '';
   bool isLoading = false;
 
   validateName(String name) {
@@ -45,7 +48,7 @@ class _SignUpState extends State<SignUp> {
     return isLoading == false
         ? Stack(
             children: [
-              backgroundImage('assets/images/register_bg.png'),
+              backgroundImage('assets/images/4.jpg'),
               Scaffold(
                 backgroundColor: Colors.transparent,
                 body: SingleChildScrollView(
@@ -109,6 +112,9 @@ class _SignUpState extends State<SignUp> {
                             hint: 'User Name',
                             inputType: TextInputType.name,
                             inputAction: TextInputAction.next,
+                            formatters: [
+                              FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]'))
+                            ],
                           ),
                           TextInputField(
                             onChanged: (value) {
@@ -120,6 +126,20 @@ class _SignUpState extends State<SignUp> {
                             hint: 'Email',
                             inputType: TextInputType.emailAddress,
                             inputAction: TextInputAction.next,
+                          ),
+                          TextInputField(
+                            onChanged: (value) {
+                              setState(() {
+                                tel = value;
+                              });
+                            },
+                            icon: FontAwesomeIcons.phone,
+                            hint: 'Tel',
+                            inputType: TextInputType.number,
+                            inputAction: TextInputAction.next,
+                            formatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
                           ),
                           PasswordInput(
                             onChanged: (value) {
@@ -202,10 +222,11 @@ class _SignUpState extends State<SignUp> {
           setState(() {
             isLoading = false;
           });
+          _userData.tel = tel;
           _userData.name = name;
           userData.userName = name;
-          print('UserDataId : ' + _userData.id);
           await _userData.saveInfo();
+          _loadUserData();
           Navigator.pushNamed(context, 'HomeScreen');
         } else {
           setState(() {
@@ -219,5 +240,16 @@ class _SignUpState extends State<SignUp> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(errorResult['message'])));
     }
+  }
+
+  void _loadUserData() async {
+    CollectionReference users = FirebaseFirestore.instance.collection('users');
+    final authClass = Provider.of<AuthClass>(context, listen: false);
+    final userData = Provider.of<UserData>(context, listen: false);
+    String uid = authClass.auth.currentUser!.uid;
+    await users.doc(uid).get().then((query) {
+      Map<String, dynamic> data = query.data() as Map<String, dynamic>;
+      userData.userRef = data;
+    });
   }
 }
